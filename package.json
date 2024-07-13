@@ -1,0 +1,26 @@
+{
+	"name": "tslox",
+	"type": "module",
+	"scripts": {
+		"build": "rimraf dist && npm run build:js && npm run build:dts",
+		"build:js": "bun build src/cli.ts src/lox.ts --outdir dist --format esm --target node",
+		"build:dts": "tsc",
+		"lox": "bun run src/cli.ts",
+		"format": "biome format --write .",
+		"generate": "bun run tools/*.ts"
+	},
+	"bin": {
+		"tslox": "./dist/cli.js"
+	},
+	"devDependencies": {
+		"@types/bun": "latest",
+		"rimraf": "^6.0.1"
+	},
+	"peerDependencies": {
+		"typescript": "^5.0.0"
+	},
+	"dependencies": {
+		"@biomejs/biome": "^1.8.3",
+		"@commander-js/extra-typings": "^12.1.0"
+	}
+}
