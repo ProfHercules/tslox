@@ -98,6 +98,13 @@ defineAst({
 			],
 		},
 		{
+			name: "Get",
+			fields: [
+				{ name: "object", type: "Expr" },
+				{ name: "name", type: "Token" },
+			],
+		},
+		{
 			name: "Grouping",
 			fields: [{ name: "expression", type: "Expr" }],
 		},
@@ -112,6 +119,25 @@ defineAst({
 				{ name: "operator", type: "Token" },
 				{ name: "right", type: "Expr" },
 			],
+		},
+		{
+			name: "Set",
+			fields: [
+				{ name: "object", type: "Expr" },
+				{ name: "name", type: "Token" },
+				{ name: "value", type: "Expr" },
+			],
+		},
+		{
+			name: "Super",
+			fields: [
+				{ name: "keyword", type: "Token" },
+				{ name: "method", type: "Token" },
+			],
+		},
+		{
+			name: "This",
+			fields: [{ name: "keyword", type: "Token" }],
 		},
 		{
 			name: "Unary",
@@ -138,6 +164,14 @@ defineAst({
 		{
 			name: "Block",
 			fields: [{ name: "statements", type: "Stmt[]" }],
+		},
+		{
+			name: "Class",
+			fields: [
+				{ name: "name", type: "Token" },
+				{ name: "superclass", type: "Expr.Variable | null" },
+				{ name: "methods", type: "Stmt.Func[]" },
+			],
 		},
 		{
 			name: "Expression",

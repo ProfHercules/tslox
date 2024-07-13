@@ -2,9 +2,9 @@
 	"name": "tslox",
 	"type": "module",
 	"scripts": {
-		"build": "rimraf dist && npm run build:js && npm run build:dts",
-		"build:js": "bun build src/cli.ts src/lox.ts --outdir dist --format esm --target node",
-		"build:dts": "tsc",
+		"build": "rimraf dist && npm run build:dts && npm run build:js",
+		"build:js": "bun build src/cli.ts src/lox.ts --outdir dist --format esm --target node --splitting",
+		"build:dts": "tsc -p tsconfig.build.json",
 		"lox": "bun run src/cli.ts",
 		"format": "biome format --write .",
 		"generate": "bun run tools/*.ts"

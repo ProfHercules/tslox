@@ -4,7 +4,7 @@ import type { Token } from "./token";
 export class Environment {
 	private values = new Map<string, unknown>();
 
-	constructor(private enclosing?: Environment) {}
+	constructor(public enclosing?: Environment) {}
 
 	define(name: string, value: unknown) {
 		this.values.set(name, value);
@@ -18,12 +18,6 @@ export class Environment {
 		if (this.enclosing) {
 			return this.enclosing.get(name);
 		}
-
-		console.log({
-			name,
-			values: this.values,
-			enclosing: this.enclosing,
-		});
 
 		throw new RuntimeError(name, `Undefined variable '${name.lexeme}'.`);
 	}

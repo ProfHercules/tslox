@@ -5,9 +5,13 @@ export namespace Expr {
 		visitAssignExpr(expr: Assign): R;
 		visitBinaryExpr(expr: Binary): R;
 		visitCallExpr(expr: Call): R;
+		visitGetExpr(expr: Get): R;
 		visitGroupingExpr(expr: Grouping): R;
 		visitLiteralExpr(expr: Literal): R;
 		visitLogicalExpr(expr: Logical): R;
+		visitSetExpr(expr: Set): R;
+		visitSuperExpr(expr: Super): R;
+		visitThisExpr(expr: This): R;
 		visitUnaryExpr(expr: Unary): R;
 		visitVariableExpr(expr: Variable): R;
 	}
@@ -57,6 +61,19 @@ export namespace Expr {
 		}
 	}
 
+	export class Get extends Expr {
+		constructor(
+			public object: Expr,
+			public name: Token,
+		) {
+			super();
+		}
+
+		override accept<R>(visitor: Visitor<R>): R {
+			return visitor.visitGetExpr(this);
+		}
+	}
+
 	export class Grouping extends Expr {
 		constructor(public expression: Expr) {
 			super();
@@ -88,6 +105,43 @@ export namespace Expr {
 
 		override accept<R>(visitor: Visitor<R>): R {
 			return visitor.visitLogicalExpr(this);
+		}
+	}
+
+	export class Set extends Expr {
+		constructor(
+			public object: Expr,
+			public name: Token,
+			public value: Expr,
+		) {
+			super();
+		}
+
+		override accept<R>(visitor: Visitor<R>): R {
+			return visitor.visitSetExpr(this);
+		}
+	}
+
+	export class Super extends Expr {
+		constructor(
+			public keyword: Token,
+			public method: Token,
+		) {
+			super();
+		}
+
+		override accept<R>(visitor: Visitor<R>): R {
+			return visitor.visitSuperExpr(this);
+		}
+	}
+
+	export class This extends Expr {
+		constructor(public keyword: Token) {
+			super();
+		}
+
+		override accept<R>(visitor: Visitor<R>): R {
+			return visitor.visitThisExpr(this);
 		}
 	}
 

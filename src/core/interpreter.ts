@@ -2,7 +2,10 @@ import { Lox } from "../lox";
 import { Environment } from "./environment";
 import type { Expr } from "./expr";
 import { LoxCallable } from "./lox.callable";
+import { LoxClass } from "./lox.class";
 import { LoxFunction } from "./lox.function";
+import { LoxInstance } from "./lox.instance";
+import { ClockFn } from "./native";
 import type { Stmt } from "./stmt";
 import { type Token, TokenType } from "./token";
 
@@ -27,22 +30,7 @@ export class Interpreter implements Expr.Visitor<unknown>, Stmt.Visitor<void> {
 	private readonly locals = new Map<Expr.Expr, number>();
 
 	constructor() {
-		this.environment.define(
-			"clock",
-			class implements LoxCallable {
-				arity() {
-					return 0;
-				}
-
-				call() {
-					return Date.now() / 1000;
-				}
-
-				toString() {
-					return "<native fn>";
-				}
-			},
-		);
+		this.environment.define("clock", new ClockFn());
 	}
 
 	public interpret(statements: Stmt.Stmt[]) {
@@ -81,6 +69,90 @@ export class Interpreter implements Expr.Visitor<unknown>, Stmt.Visitor<void> {
 		return object.toString();
 	}
 
+	visitSuperExpr(expr: Expr.Super): unknown {
+		// biome-ignore lint/style/noNonNullAssertion: <explanation>
+		const distance = this.locals.get(expr)!;
+
+		const superclass = this.environment.getAt(distance, "super") as LoxClass;
+		const object = this.environment.getAt(distance - 1, "this") as LoxInstance;
+
+		const method = superclass.findMethod(expr.method.lexeme);
+		if (!method) {
+			throw new RuntimeError(
+				expr.method,
+				`Undefined property '${expr.method.lexeme}'.`,
+			);
+		}
+
+		return method.bind(object);
+	}
+
+	visitThisExpr(expr: Expr.This): unknown {
+		return this.lookUpVariable(expr.keyword, expr);
+	}
+
+	visitSetExpr(expr: Expr.Set): unknown {
+		const object = this.evaluate(expr.object);
+
+		if (!(object instanceof LoxInstance)) {
+			throw new RuntimeError(expr.name, "Only instances have fields.");
+		}
+
+		const value = this.evaluate(expr.value);
+		(object as LoxInstance).set(expr.name, value);
+		return value;
+	}
+
+	visitGetExpr(expr: Expr.Get): unknown {
+		const object = this.evaluate(expr.object);
+
+		if (object instanceof LoxInstance) {
+			return object.get(expr.name);
+		}
+
+		throw new RuntimeError(expr.name, "Only instances have properties.");
+	}
+
+	visitClassStmt(stmt: Stmt.Class): void {
+		let superclass = null;
+		if (stmt.superclass !== null) {
+			superclass = this.evaluate(stmt.superclass);
+
+			if (!(superclass instanceof LoxClass)) {
+				throw new RuntimeError(
+					stmt.superclass.name,
+					"Superclass must be a class.",
+				);
+			}
+		}
+
+		this.environment.define(stmt.name.lexeme, null);
+
+		if (stmt.superclass !== null) {
+			this.environment = new Environment(this.environment);
+			this.environment.define("super", superclass);
+		}
+
+		const methods = new Map<string, LoxFunction>();
+		for (const method of stmt.methods) {
+			const func = new LoxFunction(
+				method,
+				this.environment,
+				method.name.lexeme === "init",
+			);
+			methods.set(method.name.lexeme, func);
+		}
+
+		const klass = new LoxClass(stmt.name.lexeme, superclass, methods);
+
+		if (superclass !== null) {
+			// biome-ignore lint/style/noNonNullAssertion: <explanation>
+			this.environment = this.environment.enclosing!;
+		}
+
+		this.environment.assign(stmt.name, klass);
+	}
+
 	visitReturnStmt(stmt: Stmt.Return): void {
 		let value = null;
 		if (stmt.value !== null) {
@@ -91,7 +163,7 @@ export class Interpreter implements Expr.Visitor<unknown>, Stmt.Visitor<void> {
 	}
 
 	visitFuncStmt(stmt: Stmt.Func): void {
-		const func = new LoxFunction(stmt, this.environment);
+		const func = new LoxFunction(stmt, this.environment, false);
 		this.environment.define(stmt.name.lexeme, func);
 	}
 

@@ -7,11 +7,20 @@ import type { Token } from "./token";
 export enum FunctionType {
 	None = "NONE",
 	Function = "FUNCTION",
+	Initializer = "INITIALIZER",
+	Method = "METHOD",
+}
+
+export enum ClassType {
+	None = "NONE",
+	Class = "CLASS",
+	Subclass = "SUBCLASS",
 }
 
 export class Resolver implements Expr.Visitor<void>, Stmt.Visitor<void> {
 	private scopes: Map<string, boolean>[] = [];
 	private currentFunction = FunctionType.None;
+	private currentClass = ClassType.None;
 
 	constructor(private readonly interpreter: Interpreter) {}
 
@@ -76,6 +85,78 @@ export class Resolver implements Expr.Visitor<void>, Stmt.Visitor<void> {
 		this.currentFunction = enclosingFunction;
 	}
 
+	visitSuperExpr(expr: Expr.Super): void {
+		if (this.currentClass === ClassType.None) {
+			Lox.error(expr.keyword, "Can't use 'super' outside of a class.");
+		} else if (this.currentClass !== ClassType.Subclass) {
+			Lox.error(
+				expr.keyword,
+				"Can't use 'super' in a class with no superclass.",
+			);
+		}
+
+		this.resolveLocal(expr, expr.keyword);
+	}
+
+	visitThisExpr(expr: Expr.This): void {
+		if (this.currentClass === ClassType.None) {
+			Lox.error(expr.keyword, "Can't use 'this' outside of a class.");
+			return;
+		}
+
+		this.resolveLocal(expr, expr.keyword);
+	}
+
+	visitSetExpr(expr: Expr.Set): void {
+		this.resolve(expr.value);
+		this.resolve(expr.object);
+	}
+
+	visitGetExpr(expr: Expr.Get): void {
+		this.resolve(expr.object);
+	}
+
+	visitClassStmt(stmt: Stmt.Class): void {
+		const enclosingClass = this.currentClass;
+		this.currentClass = ClassType.Class;
+
+		this.declare(stmt.name);
+
+		if (stmt.superclass !== null) {
+			this.currentClass = ClassType.Subclass;
+			if (stmt.name.lexeme === stmt.superclass.name.lexeme) {
+				Lox.error(stmt.superclass.name, "A class can't inherit from itself.");
+			}
+
+			this.resolve(stmt.superclass);
+		}
+
+		if (stmt.superclass !== null) {
+			this.beginScope();
+			this.scopes.at(-1)?.set("super", true);
+		}
+
+		this.beginScope();
+		this.scopes.at(-1)?.set("this", true);
+
+		for (const method of stmt.methods) {
+			let type = FunctionType.Method;
+			if (method.name.lexeme === "init") {
+				type = FunctionType.Initializer;
+			}
+
+			this.resolveFunc(method, type);
+		}
+
+		this.endScope();
+
+		if (stmt.superclass !== null) this.endScope();
+
+		this.define(stmt.name);
+
+		this.currentClass = enclosingClass;
+	}
+
 	visitBlockStmt(stmt: Stmt.Block): void {
 		this.beginScope();
 		this.resolve(stmt.statements);
@@ -132,7 +213,14 @@ export class Resolver implements Expr.Visitor<void>, Stmt.Visitor<void> {
 		if (this.currentFunction === FunctionType.None) {
 			Lox.error(stmt.keyword, "Can't return from top-level code.");
 		}
-		if (stmt.value !== null) this.resolve(stmt.value);
+
+		if (stmt.value !== null) {
+			if (this.currentFunction === FunctionType.Initializer) {
+				Lox.error(stmt.keyword, "Can't return a value from an initializer.");
+			}
+
+			this.resolve(stmt.value);
+		}
 	}
 
 	visitWhileStmt(stmt: Stmt.While): void {

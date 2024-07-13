@@ -17,6 +17,7 @@ const cli = new Command("run")
 				console.error(`File not found: ${file}`);
 				process.exit(1);
 			}
+			console.error(error);
 			console.error(`Could not run file: ${file}`);
 			process.exit(1);
 		}

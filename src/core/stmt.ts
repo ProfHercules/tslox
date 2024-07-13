@@ -4,6 +4,7 @@ import type { Token } from "./token";
 export namespace Stmt {
 	export interface Visitor<R> {
 		visitBlockStmt(stmt: Block): R;
+		visitClassStmt(stmt: Class): R;
 		visitExpressionStmt(stmt: Expression): R;
 		visitFuncStmt(stmt: Func): R;
 		visitIfStmt(stmt: If): R;
@@ -24,6 +25,20 @@ export namespace Stmt {
 
 		override accept<R>(visitor: Visitor<R>): R {
 			return visitor.visitBlockStmt(this);
+		}
+	}
+
+	export class Class extends Stmt {
+		constructor(
+			public name: Token,
+			public superclass: Expr.Variable | null,
+			public methods: Stmt.Func[],
+		) {
+			super();
+		}
+
+		override accept<R>(visitor: Visitor<R>): R {
+			return visitor.visitClassStmt(this);
 		}
 	}
 
